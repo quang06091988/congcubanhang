@@ -274,7 +274,7 @@ function rSet(){const fld=f=>`<label>${f[1]}${f[5]?' <b class="req">*</b>':''}<i
  const lb=S.lastBackup?new Date(S.lastBackup).toLocaleString('vi-VN'):'chưa từng',od=S.orders.length&&Date.now()-(S.lastBackup||0)>7*864e5;
  $('#datac').innerHTML=`<h3>Dữ liệu (${S.products.length} hàng · ${S.orders.length} đơn)</h3><p class="mu" style="margin-bottom:8px${od?';color:var(--rd);font-weight:700':''}">Dữ liệu nằm trong trình duyệt của máy này. Trên điện thoại, nút Sao lưu cho bạn chọn nơi gửi file (Zalo, Drive, Email…). Sao lưu gần nhất: ${lb}.${od?' Nên sao lưu ngay để tránh mất dữ liệu.':''}</p><div class="g2"><button class="pri" id="x1">⬇ Sao lưu đầy đủ (JSON)</button><button class="ghost" id="i1">⬆ Khôi phục từ JSON</button><button class="ghost" id="x2">⬇ Xuất hàng hoá (CSV)</button><button class="ghost" id="i2">⬆ Nhập hàng hoá (CSV)</button><button class="ghost" id="x3">⬇ Xuất đơn hàng (CSV)</button><button class="ghost" id="x4">⬇ Tải file CSV mẫu</button></div><div class="row"><button class="dng" id="wipe">Xoá toàn bộ dữ liệu</button></div>`;
  $('#x1').onclick=async()=>{const name='sao-luu-'+dk(Date.now())+'.json',prev=S.lastBackup;S.lastBackup=Date.now();const ok=await backupFile(name,JSON.stringify({app:'ban-hang-local',v:1,S},null,1));if(ok)save();else S.lastBackup=prev;rSet()};
- $('#i1').onclick=()=>pick('.json',impJSON);$('#i2').onclick=()=>pick('.csv,.tsv,.txt',impCSV);
+ $('#i1').onclick=()=>pick('.json,.txt,text/plain,application/json',impJSON);$('#i2').onclick=()=>pick('.csv,.tsv,.txt',impCSV);
  $('#x2').onclick=()=>dl('hang-hoa.csv',csv([PH,...S.products.map(p=>[p.g,p.n,p.u,p.p,p.sp||'',p.cost||'',p.so?'x':'',p.f?'x':''])]),'text/csv');
  $('#x3').onclick=()=>dl('don-hang.csv',csv([['Số phiếu','Ngày','Giờ','Tên hàng','Đơn vị','SL','Đơn giá','Thành tiền','Giá vốn','Thanh toán','Trạng thái'],...S.orders.flatMap(o=>o.items.map(i=>[o.no,dk(o.ts),tm(o.ts).slice(6),i.n,i.u,i.q,i.p,Math.round(i.q*i.p),i.c||'',o.method==='qr'?'Chuyển khoản':'Tiền mặt',o.void?'Đã huỷ':'Hoàn tất']))]),'text/csv');
  $('#x4').onclick=()=>dl('mau-hang-hoa.csv',csv([PH]),'text/csv');
@@ -282,7 +282,7 @@ function rSet(){const fld=f=>`<label>${f[1]}${f[5]?' <b class="req">*</b>':''}<i
 /* ---- nhập / xuất ---- */
 const PH=['Nhóm','Tên sản phẩm','Đơn vị','Giá','Giá KM','Giá vốn','Hết hàng (x = hết)','Yêu thích (x = có)'];
 function dl(name,txt,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([type==='text/csv'?'\uFEFF'+txt:txt],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
-async function backupFile(name,txt){const f=new File([txt],name,{type:'application/json'});
+async function backupFile(name,txt){/* Chrome/Android không cho chia sẻ file .json nên gửi dạng .txt (nội dung vẫn là JSON, khôi phục như bình thường) */const f=new File([txt],name+'.txt',{type:'text/plain'});
  if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:name});return 1}catch(e){if(e&&e.name==='AbortError')return 0}}
  dl(name,txt,'application/json');return 1}
 function csv(rows){return rows.map(r=>r.map(v=>{let s=String(v??'');if(typeof v!=='number'&&/^[=+\-@\t\r]/.test(s))s="'"+s;return/[",\n;]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(',')).join('\r\n')}
