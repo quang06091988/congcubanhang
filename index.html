@@ -67,7 +67,7 @@ input[type=color]{height:var(--btn);padding:4px 6px;cursor:pointer}.sw{width:32p
 #fx svg{width:100%;height:100%;fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}#fx circle{stroke:none}#fx path{stroke-dasharray:40;stroke-dashoffset:40;animation:dash .4s .25s forwards}
 u.rp{position:absolute;border-radius:50%;background:currentColor;opacity:.25;transform:scale(0);animation:rp .5s ease-out forwards;pointer-events:none;text-decoration:none}
 @keyframes in{from{opacity:0;transform:translateY(10px)}}@keyframes pop{from{opacity:0;transform:scale(.88)}}@keyframes fi{from{opacity:0}}@keyframes up{from{opacity:0;transform:translate(-50%,20px)}}@keyframes grow{from{transform:scaleY(0)}}@keyframes dash{to{stroke-dashoffset:0}}@keyframes out{to{opacity:0;transform:scale(1.25)}}@keyframes bmp{50%{transform:scale(1.05)}}@keyframes sh{to{background-position:-200% 0}}@keyframes shn{to{transform:translateX(100%)}}@keyframes rp{to{transform:scale(2.6);opacity:0}}
-body.co #cbar{display:none!important}.row button{white-space:nowrap;padding-left:8px;padding-right:8px}#pv_s{flex:1.5}
+body.co #cbar{display:none!important}body:not([data-t="sell"]) #cbar{display:none!important}.row button{white-space:nowrap;padding-left:8px;padding-right:8px}#pv_s{flex:1.5}
 #rc{display:none}.v,#grid,#cart{overscroll-behavior:contain}
 @media print{body>*:not(#rc){display:none!important}body{display:block;overflow:visible;background:#fff}#rc{display:block}#rc img{width:58mm}}
 @media(min-width:1200px){#v-sell.on{grid-template-columns:1fr 420px}#grid{grid-template-columns:repeat(auto-fill,minmax(calc(var(--gw) + 20px),1fr))}.v{padding:24px 32px}}
@@ -136,7 +136,7 @@ const price=p=>p.sp>0&&p.sp<p.p?p.sp:p.p;
 const roundTo=v=>{const s=S.cfg.round>0?S.cfg.round:1;return Math.round(v/s)*s};
 const navH=()=>{const n=$('nav');if(n)document.documentElement.style.setProperty('--nh',n.offsetHeight+'px')};addEventListener('resize',navH);
 function applyCfg(){const tc=document.querySelector('meta[name=theme-color]');if(tc)tc.content=S.cfg.color||'#0f9d76';document.documentElement.style.setProperty('--c',S.cfg.color||'#0f9d76');document.documentElement.dataset.z=S.cfg.big||0;$('#brand').textContent=S.cfg.name||'Tên cửa hàng';wake();navH()}
-function go(v){$$('.v').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));$$('.tab').forEach(e=>e.classList.toggle('on',e.dataset.v===v));({sell:rSell,prod:rProd,rep:rRep,set:rSet})[v]()}
+function go(v){document.body.dataset.t=v;$$('.v').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));$$('.tab').forEach(e=>e.classList.toggle('on',e.dataset.v===v));({sell:rSell,prod:rProd,rep:rRep,set:rSet})[v]()}
 $$('.tab').forEach(b=>b.onclick=()=>go(b.dataset.v));
 /* ---- giỏ hàng dở dang: giữ lại khi tải lại trang ---- */
 function pc(){try{if(Object.keys(cart).length)localStorage.setItem('cch-cart',JSON.stringify({c:cart,a:AD,d:$('#disc').value,p:DP}));else localStorage.removeItem('cch-cart')}catch(e){}}
