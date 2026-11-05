@@ -135,7 +135,13 @@ $('#mo').onclick=e=>{if(e.target.id==='mo'&&!MS)closeM()};
 const price=p=>p.sp>0&&p.sp<p.p?p.sp:p.p;
 const roundTo=v=>{const s=S.cfg.round>0?S.cfg.round:1;return Math.round(v/s)*s};
 const navH=()=>{const n=$('nav');if(n)document.documentElement.style.setProperty('--nh',n.offsetHeight+'px')};addEventListener('resize',navH);
-function applyCfg(){const tc=document.querySelector('meta[name=theme-color]');if(tc)tc.content=S.cfg.color||'#0f9d76';document.documentElement.style.setProperty('--c',S.cfg.color||'#0f9d76');document.documentElement.dataset.z=S.cfg.big||0;$('#brand').textContent=S.cfg.name||'Tên cửa hàng';wake();navH()}
+/* ---- nhận diện: tiêu đề tab + favicon vẽ theo màu chủ đạo. Đoạn này giống hệt ở hai công cụ, chỉ khác APP ---- */
+const APP={name:'Bán hàng',glyph:'🧾'};
+function applyBrand(){document.title=APP.name;try{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');if(!x)return;const col=/^#[0-9a-f]{6}$/i.test(S.cfg.color)?S.cfg.color:DEF().cfg.color;
+ x.fillStyle=col;x.beginPath();if(x.roundRect)x.roundRect(0,0,64,64,14);else x.rect(0,0,64,64);x.fill();
+ x.font='38px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(APP.glyph,32,35);
+ const l=document.createElement('link');l.rel='icon';l.type='image/png';l.href=c.toDataURL('image/png');document.querySelectorAll('link[rel=icon]').forEach(e=>e.remove());document.head.appendChild(l)}catch(e){}}
+function applyCfg(){const tc=document.querySelector('meta[name=theme-color]');if(tc)tc.content=S.cfg.color||'#0f9d76';document.documentElement.style.setProperty('--c',S.cfg.color||'#0f9d76');document.documentElement.dataset.z=S.cfg.big||0;$('#brand').textContent=S.cfg.name||'Tên cửa hàng';wake();navH();applyBrand()}
 function go(v){document.body.dataset.t=v;$$('.v').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));$$('.tab').forEach(e=>e.classList.toggle('on',e.dataset.v===v));({sell:rSell,prod:rProd,rep:rRep,set:rSet})[v]()}
 $$('.tab').forEach(b=>b.onclick=()=>go(b.dataset.v));
 /* ---- giỏ hàng dở dang: giữ lại khi tải lại trang ---- */
