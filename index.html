@@ -106,7 +106,7 @@ const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u03
 const num=v=>{const raw=String(v??''),kk=/^\s*[\d.,]+\s*k\s*$/i.test(raw);let s=raw.replace(/[^\d.,-]/g,'');if(!s)return NaN;if(/^-?\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');else if(/^-?\d{1,3}(,\d{3})+$/.test(s))s=s.replace(/,/g,'');else s=s.replace(',','.');return parseFloat(s)*(kk?1000:1)};
 const dk=t=>{const d=new Date(t),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())};
 const tm=t=>{const d=new Date(t),p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes())};
-const DEF=()=>({cfg:{name:'',phone:'',addr:'',foot:'',pre:'',color:'#0f9d76',bin:'',bank:'',acc:'',holder:'',round:0,big:0,vib:1,snd:0,awake:0},products:[],orders:[],counter:0,lastBackup:0});
+const DEF=()=>({cfg:{name:'',phone:'',addr:'',foot:'',pre:'',color:'#0f9d76',bin:'',bank:'',acc:'',holder:'',round:0,big:0,vib:1,snd:0,awake:0,qo:0,qs:0},products:[],orders:[],counter:0,lastBackup:0});
 let S=DEF(),DBH=null,cart={},AD={},DP=0,G='',Q='',R='today',last=null,hs,OL=100;
 /* ---- lưu trữ: IndexedDB, toàn bộ dữ liệu nằm trên máy ---- */
 const idb=()=>new Promise((ok,no)=>{const r=indexedDB.open('ban-hang-local',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
@@ -165,7 +165,7 @@ $('#cart').addEventListener('focusin',e=>{if(e.target.tagName==='INPUT')e.target
 $('#cart').onchange=e=>{if(e.target.tagName!=='INPUT')return;const id=e.target.parentNode.dataset.id,v=num(e.target.value);if(v>0)cart[id]=v;else delete cart[id];rCart()};
 $('#disc').oninput=()=>{DP=0;rCart()};
 $$('[data-p]').forEach(b=>b.onclick=()=>{DP=DP===+b.dataset.p?0:+b.dataset.p;if(!DP)$('#disc').value='';fb('tap');rCart()});
-function done(method,cash){const T=tot();if(!T.L.length)return;S.counter++;const o={id:uid(),no:(S.cfg.pre||'')+String(S.counter).padStart(5,'0'),ts:Date.now(),items:T.L.map(l=>({i:l.p.id,n:l.p.n,u:l.p.u||'',q:l.q,p:price(l.p),c:l.p.cost||0,x:AD[l.p.id]?1:0})),sub:T.sub,disc:T.d,amt:T.t,method,cash:method==='cash'?cash:0,change:method==='cash'&&cash>T.t?cash-T.t:0,void:false};
+function done(method,cash){const T=tot();if(!T.L.length)return;S.counter++;const o={id:uid(),no:ono(S.counter),ts:Date.now(),items:T.L.map(l=>({i:l.p.id,n:l.p.n,u:l.p.u||'',q:l.q,p:price(l.p),c:l.p.cost||0,x:AD[l.p.id]?1:0})),sub:T.sub,disc:T.d,amt:T.t,method,cash:method==='cash'?cash:0,change:method==='cash'&&cash>T.t?cash-T.t:0,void:false};
  S.orders.push(o);save();cart={};AD={};DP=0;$('#disc').value='';last=o;rSell();snack(o);fx();fb('ok')}
 function snack(o){const s=$('#snk');s.hidden=false;s.innerHTML=`<span>✓ ${esc(o.no)} · ${fmt(o.amt)}đ</span><button onclick="viewR('${o.id}')">Xem</button><button onclick="undo()">Hoàn tác</button>`;clearTimeout(snack.t);snack.t=setTimeout(()=>s.hidden=true,10000)}
 function undo(){$('#snk').hidden=true;const o=last;if(!o||o.void)return;o.void=true;save();o.items.forEach(i=>{if(i.x)AD[i.i]={id:i.i,n:i.n,p:i.p,u:i.u,cost:i.c||0};if(i.x||S.products.some(p=>p.id===i.i))cart[i.i]=(cart[i.i]||0)+i.q});if(o.disc){DP=0;$('#disc').value=o.disc}rSell();toast('Đã hoàn tác '+o.no)}
@@ -173,7 +173,7 @@ const commit=()=>{const a=document.activeElement;if(a&&a.tagName==='INPUT'&&a.cl
 $('#quick').onclick=()=>{commit();const T=tot();if(T.L.length)done('cash',T.t)};
 $('#pay').onclick=()=>{commit();const T=tot();if(!T.L.length)return;let m='cash';
  const cands=[...new Set([T.t,...[1e4,5e4,1e5,2e5,5e5].map(s=>Math.ceil(T.t/s)*s)])].filter(v=>v>=T.t).sort((a,b)=>a-b).slice(0,5);
- modal(`<h3>Thanh toán ${fmt(T.t)}đ</h3><div class="seg"><button id="m1" class="on">Tiền mặt</button><button id="m2">Chuyển khoản</button></div><div id="pc" style="margin-top:10px"><label>Khách đưa (đ)<input id="cg" inputmode="decimal" placeholder="Để trống = khách đưa đủ"></label><div class="qk">${cands.map(v=>`<button data-v="${v}">${v===T.t?'Đủ':fmt(v)}</button>`).join('')}</div><p>Tiền thối: <b id="ch">0đ</b></p></div><div id="pqr" hidden>${qr(T.t)}</div><div class="row"><button class="ghost" onclick="closeM()">Hủy</button><button class="pri" id="ok">Xác nhận</button></div>`);
+ modal(`<h3>Thanh toán ${fmt(T.t)}đ</h3><div class="seg"><button id="m1" class="on">Tiền mặt</button><button id="m2">Chuyển khoản</button></div><div id="pc" style="margin-top:10px"><label>Khách đưa (đ)<input id="cg" inputmode="decimal" placeholder="Để trống = khách đưa đủ"></label><div class="qk">${cands.map(v=>`<button data-v="${v}">${v===T.t?'Đủ':fmt(v)}</button>`).join('')}</div><p>Tiền thối: <b id="ch">0đ</b></p></div><div id="pqr" hidden>${qr(T.t,ono(S.counter+1))}</div><div class="row"><button class="ghost" onclick="closeM()">Hủy</button><button class="pri" id="ok">Xác nhận</button></div>`);
  $('#m1').onclick=$('#m2').onclick=e=>{m=e.target.id==='m1'?'cash':'qr';$('#m1').classList.toggle('on',m==='cash');$('#m2').classList.toggle('on',m==='qr');$('#pc').hidden=m!=='cash';$('#pqr').hidden=m!=='qr'};
  $('#cg').oninput=e=>{$('#ch').textContent=fmt(Math.max(0,(num(e.target.value)||0)-T.t))+'đ'};
  $('#pc').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#cg').value=b.dataset.v;$('#cg').dispatchEvent(new Event('input'));fb('tap')}};
@@ -184,7 +184,11 @@ $('#adhoc').onclick=()=>{modal(`<h3>Bán hàng khác</h3><p class="mu" style="ma
  $('#a_ok').onclick=()=>{const p=num($('#a_p').value);let q=num($('#a_q').value);if(!(q>0))q=1;if(!(p>=0)){bad('a_p','a_er','Cần nhập giá bán, ví dụ 25000');return}
   const id='x'+uid();AD[id]={id,n:$('#a_n').value.trim().slice(0,120)||'Hàng khác',p,u:'',cost:0};cart[id]=q;closeM();rCart();fb('tap');toast('Đã thêm vào giỏ')}};
 const crc=t=>{let c=65535;for(let i=0;i<t.length;i++){c^=t.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=c&32768?(c<<1)^4129:c<<1;c&=65535}return c.toString(16).toUpperCase().padStart(4,'0')},tl=(i,v)=>i+String(v.length).padStart(2,'0')+v;
-function vqr(c,amt){const b=String(c.bin).replace(/\s/g,''),a=String(c.acc).replace(/\s/g,''),p=tl('00','01')+tl('01','12')+tl('38',tl('00','A000000727')+tl('01',tl('00',b)+tl('01',a))+tl('02','QRIBFTTA'))+tl('53','704')+tl('54',String(Math.round(amt)))+tl('58','VN')+'6304';return p+crc(p)}
+/* số phiếu: tiền tố + 6 chữ số (đơn cũ 5 chữ số giữ nguyên) */
+const ono=n=>(S.cfg.pre||'')+String(n).padStart(6,'0');
+/* nội dung chuyển khoản điền sẵn trong QR: [SEVQR] [số phiếu]; cả hai ô tắt thì rỗng */
+const qnote=no=>[S.cfg.qs?'SEVQR':'',S.cfg.qo?no:''].filter(Boolean).join(' ');
+function vqr(c,amt,note){const b=String(c.bin).replace(/\s/g,''),a=String(c.acc).replace(/\s/g,''),p=tl('00','01')+tl('01','12')+tl('38',tl('00','A000000727')+tl('01',tl('00',b)+tl('01',a))+tl('02','QRIBFTTA'))+tl('53','704')+tl('54',String(Math.round(amt)))+tl('58','VN')+(note?tl('62',tl('08',note)):'')+'6304';return p+crc(p)}
 function qrM(txt){const d=[...new TextEncoder().encode(txt)],TB=[[16,10,1,16,0],[28,16,1,28,0],[44,26,1,44,0],[64,18,2,32,0],[86,24,2,43,0],[108,16,4,27,0],[124,18,4,31,0],[154,22,2,38,2],[182,22,3,36,2],[216,26,4,43,1]];
  let v=0;while(v<10&&TB[v][0]*8<4+(v<9?8:16)+8*d.length)v++;if(v>9)throw'long';
  const[DT,EC,B1,D1,B2]=TB[v],bits=[],put=(n,l)=>{for(let i=l-1;i>=0;i--)bits.push((n>>i)&1)};
@@ -211,8 +215,8 @@ function qrM(txt){const d=[...new TextEncoder().encode(txt)],TB=[[16,10,1,16,0],
   let p=0;for(let a=0;a<2;a++)for(let i=0;i<N;i++){let run=1;for(let j=1;j<N;j++){const x=a?Q[j][i]:Q[i][j],y=a?Q[j-1][i]:Q[i][j-1];if(x==y){run++;if(run==5)p+=3;else if(run>5)p++}else run=1}}
   if(p<bp){bp=p;best=Q}}return best}
 function qSvg(M){const n=M.length;let p='';M.forEach((r,y)=>r.forEach((v,x)=>{if(v)p+=`M${x+4} ${y+4}h1v1h-1z`}));return`<svg viewBox="0 0 ${n+8} ${n+8}" width="100%" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff"/><path d="${p}" fill="#000"/></svg>`}
-function qr(a){const c=S.cfg;if(!c.bin||!c.acc)return'<p class="mu">Chưa khai tài khoản ngân hàng trong Cài đặt.</p>';let m;try{m=qrM(vqr(c,a))}catch(e){return'<p class="mu">Không tạo được mã QR — kiểm tra mã ngân hàng và số tài khoản.</p>'}
- return`<div style="max-width:260px;margin:8px auto">${qSvg(m)}</div><p style="text-align:center">${c.bank?'<b>'+esc(c.bank)+'</b><br>':''}STK <b>${esc(c.acc)}</b>${c.holder?' · '+esc(c.holder):''}<br>Số tiền <b>${fmt(a)}đ</b></p>`}
+function qr(a,no){const c=S.cfg;if(!c.bin||!c.acc)return'<p class="mu">Chưa khai tài khoản ngân hàng trong Cài đặt.</p>';const nt=qnote(no);let m;try{m=qrM(vqr(c,a,nt))}catch(e){return'<p class="mu">Không tạo được mã QR — kiểm tra mã ngân hàng, số tài khoản và tiền tố số phiếu.</p>'}
+ return`<div style="max-width:260px;margin:8px auto">${qSvg(m)}</div><p style="text-align:center">${c.bank?'<b>'+esc(c.bank)+'</b><br>':''}STK <b>${esc(c.acc)}</b>${c.holder?' · '+esc(c.holder):''}<br>Số tiền <b>${fmt(a)}đ</b>${nt?'<br>Nội dung CK: <b>'+esc(nt)+'</b>':''}</p>`}
 /* ---- hàng hoá: thêm / sửa / xoá ---- */
 function rProd(){const k=norm($('#pq').value),ps=S.products.filter(p=>!k||norm(p.n+' '+p.g).includes(k)).sort((a,b)=>(a.g||'').localeCompare(b.g||'','vi')||a.n.localeCompare(b.n,'vi'));
  $('#plist').innerHTML=ps.length?ps.map(p=>`<div class="li"><span><b>${esc(p.n)}</b>${p.f?' ★':''}${p.so?' · <span style="color:var(--rd)">hết</span>':''}<br><span class="mu">${esc(p.g||'—')} · ${fmt(price(p))}đ${p.u?' / '+esc(p.u):''}</span></span><span style="display:flex;gap:6px;flex:none"><button class="ghost" onclick="togSo('${p.id}')">${p.so?'Còn hàng':'Hết hàng'}</button><button class="ghost" onclick="editP('${p.id}')">Sửa</button></span></div>`).join(''):'<p class="mu">Chưa có hàng hoá. Bấm "+ Thêm" hoặc nhập file ở Cài đặt.</p>'}
@@ -268,10 +272,10 @@ function rUi(){const SG=(k,o)=>`<div class="seg" data-k="${k}">${o.map(([v,l])=>
  $('#uic').innerHTML=`<h3>Giao diện &amp; phản hồi</h3><label>Cỡ chữ &amp; nút</label>${SG('big',[[0,'Vừa'],[1,'Lớn'],[2,'Rất lớn']])}<label style="margin-top:12px">Rung khi chạm</label>${SG('vib',[[1,'Bật'],[0,'Tắt']])}<span class="hint">iPhone không hỗ trợ rung — hãy bật âm báo.</span><label style="margin-top:12px">Âm báo</label>${SG('snd',[[1,'Bật'],[0,'Tắt']])}<label style="margin-top:12px">Giữ màn hình luôn sáng</label>${SG('awake',[[1,'Bật'],[0,'Tắt']])}<span class="hint">Màn hình không tự tắt khi đang mở app. Tốn pin hơn.</span>`}
 $('#uic').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;const k=b.parentNode.dataset.k;S.cfg[k]=+b.dataset.v;save();applyCfg();fb('tap');rUi()};
 function rSet(){const fld=f=>`<label>${f[1]}${f[5]?' <b class="req">*</b>':''}<input id="s_${f[0]}" type="${f[2]}" value="${esc(S.cfg[f[0]]||'')}"${f[3]?` placeholder="${esc(f[3])}"`:''}>${f[4]?`<span class="hint">${f[4]}</span>`:''}</label>`;
- $('#cfgc').innerHTML=`<h3>Thông tin cửa hàng</h3>${S.cfg.name?'':'<p class="mu" style="margin-bottom:8px">Điền tên cửa hàng rồi bấm Lưu để bắt đầu. Mọi thông tin chỉ lưu trên máy này.</p>'}<div class="g2">${FA.map(fld).join('')}</div><h3 style="margin-top:16px">Nhận chuyển khoản <span class="mu" style="font-weight:400">(tuỳ chọn)</span></h3><p class="hint" style="margin:-4px 0 8px">Điền ngân hàng và số tài khoản để hiện mã QR khi thanh toán và trên phiếu.</p><label>Chọn ngân hàng<select id="s_bsel"><option value="">— Chọn ngân hàng —</option>${BK.map(([n,b])=>`<option value="${b}"${S.cfg.bin===b?' selected':''}>${n}</option>`).join('')}</select></label><div class="g2" style="margin-top:10px">${FB.map(fld).join('')}</div><p class="er" id="s_er"></p><div class="row"><button class="pri" id="s_ok">Lưu</button></div>`;
+ $('#cfgc').innerHTML=`<h3>Thông tin cửa hàng</h3>${S.cfg.name?'':'<p class="mu" style="margin-bottom:8px">Điền tên cửa hàng rồi bấm Lưu để bắt đầu. Mọi thông tin chỉ lưu trên máy này.</p>'}<div class="g2">${FA.map(fld).join('')}</div><h3 style="margin-top:16px">Nhận chuyển khoản <span class="mu" style="font-weight:400">(tuỳ chọn)</span></h3><p class="hint" style="margin:-4px 0 8px">Điền ngân hàng và số tài khoản để hiện mã QR khi thanh toán và trên phiếu.</p><label>Chọn ngân hàng<select id="s_bsel"><option value="">— Chọn ngân hàng —</option>${BK.map(([n,b])=>`<option value="${b}"${S.cfg.bin===b?' selected':''}>${n}</option>`).join('')}</select></label><div class="g2" style="margin-top:10px">${FB.map(fld).join('')}</div><label class="ck" style="margin-top:10px"><input type="checkbox" id="s_qo"${S.cfg.qo?' checked':''}> Gắn mã đơn vào nội dung chuyển khoản</label><label class="ck"><input type="checkbox" id="s_qs"${S.cfg.qs?' checked':''}> Thêm SEVQR vào đầu nội dung</label><p class="hint" style="margin:0 0 4px">Nội dung chuyển khoản phải chứa SEVQR để định tuyến giao dịch qua SePay.</p><p class="er" id="s_er"></p><div class="row"><button class="pri" id="s_ok">Lưu</button></div>`;
  $('#s_bsel').onchange=e=>{const o=e.target.selectedOptions[0];if(!o||!o.value)return;$('#s_bank').value=o.textContent;$('#s_bin').value=o.value};
  $('#cfgc').onclick=e=>{const b=e.target.closest('.sw');if(b){$('#s_color').value=b.dataset.c;fb('tap')}};
- $('#s_ok').onclick=()=>{const v={};FA.concat(FB).forEach(f=>{v[f[0]]=$('#s_'+f[0]).value.trim()});
+ $('#s_ok').onclick=()=>{const v={};FA.concat(FB).forEach(f=>{v[f[0]]=$('#s_'+f[0]).value.trim()});v.qo=$('#s_qo').checked?1:0;v.qs=$('#s_qs').checked?1:0;
   if(!v.name){bad('s_name','s_er','Cần nhập tên cửa hàng để bắt đầu bán');return}
   if(!v.bin!==!v.acc){bad(v.bin?'s_acc':'s_bin','s_er','Cần điền cả mã ngân hàng và số tài khoản thì mới có mã QR');return}
   if(v.bin&&!/^\d{6}$/.test(v.bin.replace(/\s/g,''))){bad('s_bin','s_er','Mã ngân hàng gồm 6 chữ số');return}
@@ -309,7 +313,7 @@ function impCSV(t){const rows=parseCSV(t);if(rows.length<2){toast('File không c
   ()=>ok.forEach(o=>{const e=S.products.find(p=>key(p)===key(o));e?Object.assign(e,o):S.products.push(Object.assign({id:uid()},o))}),
   ()=>{S.products=ok.map(o=>Object.assign({id:uid()},o));cart={};AD={};DP=0;$('#disc').value='';pc()})}
 const sid=v=>String(v??'').replace(/[^\w-]/g,'').slice(0,64)||uid(),n0=v=>{v=+v;return isFinite(v)?v:0},st=(v,l)=>String(v??'').slice(0,l);
-function cleanX(X){const cfg=Object.assign(DEF().cfg,X.cfg&&typeof X.cfg==='object'?X.cfg:{});if(!/^#[0-9a-f]{6}$/i.test(cfg.color))cfg.color='#0f9d76';cfg.round=n0(cfg.round);
+function cleanX(X){const cfg=Object.assign(DEF().cfg,X.cfg&&typeof X.cfg==='object'?X.cfg:{});if(!/^#[0-9a-f]{6}$/i.test(cfg.color))cfg.color='#0f9d76';cfg.round=n0(cfg.round);cfg.qo=cfg.qo?1:0;cfg.qs=cfg.qs?1:0;
  return{products:X.products.map(p=>({id:sid(p.id),n:st(p.n,120),g:st(p.g,60),u:st(p.u,20),p:n0(p.p),sp:n0(p.sp),cost:n0(p.cost),so:p.so?1:0,f:p.f?1:0})),
   orders:X.orders.map(o=>({id:sid(o.id),no:st(o.no,40),ts:n0(o.ts),items:(Array.isArray(o.items)?o.items:[]).map(i=>({i:sid(i.i),n:st(i.n,120),u:st(i.u,20),q:n0(i.q),p:n0(i.p),c:n0(i.c),x:i.x?1:0})),sub:n0(o.sub),disc:n0(o.disc),amt:n0(o.amt),method:o.method==='qr'?'qr':'cash',cash:n0(o.cash),change:n0(o.change),void:!!o.void})),
   counter:n0(X.counter),lastBackup:n0(X.lastBackup),cfg}}
@@ -320,7 +324,8 @@ function impJSON(t){let d;try{d=JSON.parse(t)}catch(e){toast('File JSON không �
   ()=>{S=Object.assign(DEF(),X,{cfg:Object.assign(DEF().cfg,X.cfg)});cart={};AD={};DP=0;$('#disc').value='';pc();applyCfg()})}
 let PV=null;
 async function rcCanvas(o){const c=S.cfg,W=420,P=26,D=2,ff='system-ui,-apple-system,"Segoe UI",Roboto,sans-serif',F=(w,z)=>w+' '+z+'px '+ff;
- const QM=o.method==='qr'&&c.bin&&c.acc?(()=>{try{return qrM(vqr(c,o.amt))}catch(e){return null}})():null;
+ const qn=o.method==='qr'&&c.bin&&c.acc?qnote(o.no):'';
+ const QM=o.method==='qr'&&c.bin&&c.acc?(()=>{try{return qrM(vqr(c,o.amt,qn))}catch(e){return null}})():null;
  const draw=(x,dry)=>{let y=28;
   const T=(t,px,py,f,col,al)=>{if(dry)return;x.font=f;x.fillStyle=col||'#161616';x.textAlign=al||'left';x.fillText(t,px,py)};
   const WR=(t,w,f)=>{x.font=f;const L=[];let cur='';String(t).split(' ').forEach(z=>{const k=cur?cur+' '+z:z;if(x.measureText(k).width<=w||!cur)cur=k;else{L.push(cur);cur=z}});if(cur)L.push(cur);return L};
@@ -336,7 +341,7 @@ async function rcCanvas(o){const c=S.cfg,W=420,P=26,D=2,ff='system-ui,-apple-sys
   if(o.method==='cash'){if(o.cash){RW('Khách đưa',fmt(o.cash),F('400',14),'#444',22);RW('Thối',fmt(o.change),F('400',14),'#444',18)}RW('Hình thức','Tiền mặt',F('400',14),'#444',18)}
   else{RW('Hình thức','Chuyển khoản',F('400',14),'#444',22);DL();y+=18;T('Quét mã để chuyển khoản',W/2,y,F('600',14),'#333','center');
    if(c.bin&&c.acc){const k=QM?Math.max(3,Math.floor(220/(QM.length+8))):0,s=QM?(QM.length+8)*k:0;if(!dry&&QM){const x0=(W-s)/2;x.fillStyle='#000';QM.forEach((r,j)=>r.forEach((v,i)=>{if(v)x.fillRect(x0+(i+4)*k,y+10+(j+4)*k,k,k)}))}y+=10+s;
-    if(c.bank)CT(c.bank,14,'600','#333',22);CT('STK '+c.acc,15,'700',null,c.bank?20:22);if(c.holder)CT(c.holder,13,'400','#555',18);if(!QM)CT('(Không tạo được mã QR — kiểm tra mã ngân hàng và số tài khoản)',12,'400','#999',16)}else CT('Chưa khai tài khoản ngân hàng trong Cài đặt',13,'400','#999',22)}
+    if(c.bank)CT(c.bank,14,'600','#333',22);CT('STK '+c.acc,15,'700',null,c.bank?20:22);if(c.holder)CT(c.holder,13,'400','#555',18);if(qn&&QM)CT('Nội dung CK: '+qn,13,'600','#333',18);if(!QM)CT('(Không tạo được mã QR — kiểm tra mã ngân hàng, số tài khoản và tiền tố số phiếu)',12,'400','#999',16)}else CT('Chưa khai tài khoản ngân hàng trong Cài đặt',13,'400','#999',22)}
   if(c.foot){DL();CT(c.foot,14,'400','#555',20)}
   return y+30};
  const m=document.createElement('canvas').getContext('2d'),H=draw(m,true),cv=document.createElement('canvas');cv.width=W*D;cv.height=H*D;const x=cv.getContext('2d');x.scale(D,D);x.fillStyle='#fff';x.fillRect(0,0,W,H);draw(x,false);return cv}
