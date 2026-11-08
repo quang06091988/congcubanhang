@@ -25,7 +25,7 @@ header{grid-area:h;background:var(--g);color:#fff;display:flex;align-items:cente
 #brand{font-weight:800;font-size:calc(var(--fs)*1.2);margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.2px}
 #off{background:var(--a);color:#3a2800;border-radius:99px;padding:2px 10px;font-size:.8em;font-weight:700}#off[hidden],#inst[hidden]{display:none}
 #inst{background:#fff;color:var(--c);border-radius:99px;padding:6px 12px;font-weight:700;font-size:.87em}
-#gox{background:rgba(255,255,255,.2);color:#fff;border-radius:99px;padding:6px 12px;font-weight:700;font-size:.87em;text-decoration:none;white-space:nowrap}#gox:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#gox,#gox2{background:rgba(255,255,255,.2);color:#fff;border-radius:99px;padding:6px 12px;font-weight:700;font-size:.87em;text-decoration:none;white-space:nowrap}#gox:focus-visible,#gox2:focus-visible{outline:2px solid #fff;outline-offset:2px}@media(max-width:480px){#gox span,#gox2 span{display:none}#gox,#gox2{padding:6px 10px}}
 nav{grid-area:n;background:var(--w);display:flex;flex-direction:column;gap:6px;padding:10px 8px;border-right:1px solid var(--ln)}
 .tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.8em;font-weight:600;padding:10px 2px;border-radius:14px;color:var(--mu)}.tab b{font-size:1.45em;transition:transform .25s}
 .tab.on{background:var(--g);color:#fff;box-shadow:var(--sh)}.tab.on b{transform:scale(1.15)}
@@ -83,7 +83,7 @@ header{padding:8px 14px}#v-sell.on{grid-template-columns:1fr}#grid{padding-botto
 </style>
 </head>
 <body>
-<header><span class="logo">🧾</span><span id="brand">Tên cửa hàng</span><a id="gox" href="https://congcudathang.vercel.app/">📋 Đặt hàng</a><span id="off" hidden>Offline</span><button id="inst" hidden>⤓ Cài app</button></header>
+<header><span class="logo">🧾</span><span id="brand">Tên cửa hàng</span><a id="gox" href="https://congcudathang.vercel.app/" aria-label="Đặt hàng">📋<span> Đặt hàng</span></a><a id="gox2" href="https://congcutinhgia.vercel.app/" aria-label="Tính giá">🧮<span> Tính giá</span></a><span id="off" hidden>Offline</span><button id="inst" hidden>⤓ Cài app</button></header>
 <nav><button class="tab on" data-v="sell"><b>🛒</b>Bán hàng</button><button class="tab" data-v="prod"><b>📦</b>Hàng hoá</button><button class="tab" data-v="rep"><b>📊</b>Đơn hàng</button><button class="tab" data-v="set"><b>⚙️</b>Cài đặt</button></nav>
 <main>
 <section class="v on" id="v-sell">
@@ -314,6 +314,8 @@ function parseCSV(t){t=t.replace(/^\uFEFF/,'');const h=t.split('\n')[0],sep=h.in
 function pick(acc,cb){const i=document.createElement('input');i.type='file';i.accept=acc;i.onchange=()=>{const f=i.files[0];if(!f)return;if(f.size>20e6){toast('File quá lớn (tối đa 20 MB)',1);return}const r=new FileReader();r.onload=()=>cb(String(r.result));r.readAsText(f,'utf-8')};i.click()}
 const key=p=>norm(p.g)+'|'+norm(p.n);
 function choose(msg,onMerge,onReplace){modal(`<h3>Nhập dữ liệu</h3><p style="margin-bottom:10px">${msg}</p><div class="row"><button class="ghost" onclick="closeM()">Hủy</button><button class="ghost" id="c_m">Gộp</button><button class="dng" id="c_r">Thay thế</button></div><p class="mu" style="font-size:12px;margin-top:8px">Gộp: giữ dữ liệu hiện có, cập nhật hàng trùng tên + nhóm. Thay thế: xoá phần hiện có.</p>`);$('#c_m').onclick=()=>{closeM();onMerge();save();go('set');toast('Đã gộp')};$('#c_r').onclick=()=>{if(confirm('Thay thế dữ liệu hiện có?')){closeM();onReplace();save();go('set');toast('Đã thay thế')}}}
+/* gộp CSV: ô trống hoặc 0 không ghi đè dữ liệu đang có (giá bán luôn được cập nhật) */
+const nb=o=>{const r={};for(const k in o)if(k==='p'||(o[k]!==''&&o[k]!==0))r[k]=o[k];return r};
 function impCSV(t){const rows=parseCSV(t);if(rows.length<2){toast('File không có dữ liệu',1);return}const H=rows[0].map(norm);
  const ix=(...k)=>H.findIndex(h=>k.some(x=>h===x||h.startsWith(x+' ')||h.startsWith(x+'(')));const c={g:ix('nhom','tab'),n:ix('ten san pham','ten hang','ten'),u:ix('don vi'),p:H.indexOf('gia'),sp:ix('gia km','gia khuyen mai'),cost:ix('gia von'),so:ix('het hang'),f:ix('yeu thich')};
  if(c.n<0||c.p<0){toast('Thiếu cột "Tên sản phẩm" hoặc "Giá"',1);return}
@@ -322,7 +324,7 @@ function impCSV(t){const rows=parseCSV(t);if(rows.length<2){toast('File không c
   ok.push({g:g('g'),n:n.slice(0,120),u:g('u').slice(0,20),p,sp:num(g('sp'))||0,cost:num(g('cost'))||0,so:flag(g('so'))?1:0,f:flag(g('f'))?1:0})});
  if(!ok.length){toast('Không có dòng hợp lệ. '+(err[0]||''),1);return}
  choose(`${ok.length} dòng hợp lệ, ${err.length} dòng lỗi${err.length?'<br><span class="mu">'+err.slice(0,5).map(esc).join('<br>')+(err.length>5?'<br>…':'')+'</span>':''}`,
-  ()=>ok.forEach(o=>{const e=S.products.find(p=>key(p)===key(o));e?Object.assign(e,o):S.products.push(Object.assign({id:uid()},o))}),
+  ()=>ok.forEach(o=>{const e=S.products.find(p=>key(p)===key(o));e?Object.assign(e,nb(o)):S.products.push(Object.assign({id:uid()},o))}),
   ()=>{S.products=ok.map(o=>Object.assign({id:uid()},o));cart={};AD={};DP=0;$('#disc').value='';pc()})}
 const sid=v=>String(v??'').replace(/[^\w-]/g,'').slice(0,64)||uid(),n0=v=>{v=+v;return isFinite(v)?v:0},st=(v,l)=>String(v??'').slice(0,l);
 function cleanX(X){const cfg=Object.assign(DEF().cfg,X.cfg&&typeof X.cfg==='object'?X.cfg:{});if(!/^#[0-9a-f]{6}$/i.test(cfg.color))cfg.color='#0f9d76';cfg.round=n0(cfg.round);cfg.qo=cfg.qo?1:0;cfg.qs=cfg.qs?1:0;
